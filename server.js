@@ -10,15 +10,13 @@ const hbs     = require('hbs');
 const fs      = require('fs');
 const path    = require('path');
 const bodyParser = require('body-parser');
-const fetch      = require('node-fetch');
 //user defined modules
-const db         = require('./models/dbconnection').db;
-const utils      = require('./utils/utils');
+const db = require('./models/dbconnection').db;
+const utils = require('./utils/utils');
 
 const PORT     = process.env.PORT || 3000;
-const BASE_URL = `localhost:${PORT}/`;
-const app     = express();
-const api     = express();
+const app      = express();
+const api      = express();
 
 
 hbs.registerPartials(__dirname + '/partials');
@@ -46,96 +44,11 @@ app.listen(PORT, ()=>{
 // API Endpoints
 app.use('/api', api);
 
-api.get('/product_list', (req, res) => {
-    let sql = `SELECT productId, name, price, description FROM product_list;`;
-    db.query(sql, (err, results) => {
-        if(err){
-            res.status(404).send(
-                {
-                    success: "false",
-                }
-            )
-        }else{
-            console.log(results);
-            res.send(results);
-        }
-    })
-})
+api.use(require('./routes/api_routes'));
 
-api.post('/cart/:userId', (req,res) => {
-
-    var user_id    = req.params.userId;
-    var product_id = req.body.product_id;
-    var quantity   = req.body.quantity;
-    var cartId;
-    var price;
-
-   let add_pending_cart_sql =  `INSERT INTO \`cart\` (\`userId\`) SELECT * FROM (SELECT ${user_id}) AS tmp WHERE NOT EXISTS (SELECT \`userId\` FROM \`cart\` WHERE \`userId\` = ${user_id} AND checkedOut = 'pending') LIMIT 1;`;
-
-   db.query(add_pending_cart_sql)
-   .then(() =>{
-
-       let get_cart_id_sql = `SELECT \`cartId\` from \`cart\` where \`userId\` = ${user_id} and checkedOut = 'pending';`;
-       
-       return db.query(get_cart_id_sql);
-   }).then((cart_id_row) => {
-       cartId = cart_id_row[0].cartId;
-
-       let get_item_price_sql = `SELECT \`price\` from \`product_list\` WHERE \`productId\` = ${product_id};`;    
-       
-       return db.query(get_item_price_sql);
-   }).then((price_row) => {
-       price = price_row[0].price;
-
-       let add_item_to_cart_sql = `INSERT INTO \`cart_item\` (\`cartId\`, \`productId\`, \`quantity\`, \`price\`, \`totalPrice\`) VALUES (${cartId}, ${product_id}, ${quantity}, ${price}, ${quantity * price});`;
-       
-       return db.query(add_item_to_cart_sql)
-   }).then(()=>{
-        //update the cart value
-        let item_value = quantity * price;
-
-        let update_cart_value_sql = `UPDATE \`cart\` SET \`value\` = \`value\` + ${item_value} WHERE \`cartId\` = ${cartId}`;
-        
-        return db.query(update_cart_value_sql);
-   })
-   .then(() =>{
-        res.send({
-            success: "true"
-        })
-   })
-   .catch((err) => {
-       console.log(err)
-        res.status(500).send({
-            success: "false",
-        })
-   });
-})
-
-api.get('/cart/:userId', (req, res) => {
-
-    var user_id    = req.params.userId;
-    var cart_rows;
-
-    let get_cart_sql = `SELECT \`productId\`, \`quantity\`, \`price\`, \`totalPrice\` FROM \`cart_item\` WHERE \`cartId\` IN (SELECT \`cartId\` FROM \`cart\` WHERE \`userId\` = ${user_id});`;
-
-    let get_cart_value_sql = `SELECT \`value\` FROM \`cart\` WHERE \`userId\` = ${user_id};`;
-    
-    db.query(get_cart_sql)
-    .then((rows) =>{
-        cart_rows = rows;
-        return db.query(get_cart_value_sql);
-    }).then((value_row) =>{
-        let value = value_row[0].value;
-        let cart_structure = utils.formatOrder(cart_rows, value);
-        res.send(cart_structure);
-    }).catch((err) => {
-        res.status(500).send({
-            success: "false",
-        })
-    })
-})
 
 //checkout the given cart
+//###>> MOVE THESE TO A SEPARATE STRIPE CONTROLLER
 api.get('/cart/checkout/:userId', (req,res) => {
     //get the complete order from cart
     var user_id    = req.params.userId;
