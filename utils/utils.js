@@ -1,0 +1,35 @@
+function isEmptyObject(obj) {
+    for(var key in obj) {
+        if(obj.hasOwnProperty(key))
+            return false;
+    }
+    return true;
+}
+
+function isEmptyArray(arr){
+    if (Array.isArray(arr) && arr.length === 0){
+        return true;
+    }else{
+        return false;
+    }
+}
+
+function formatOrder(cart_rows, value){
+    var orderObject = {};
+    if(! isEmptyArray(cart_rows)){
+        orderObject.product_rows = cart_rows;
+        orderObject.grandTotal = value;
+        return orderObject;
+    }else{
+        return {
+            success: "false",
+            message: "Empty cart"
+            }
+    }
+}
+
+module.exports = {
+    isEmptyObject,
+    isEmptyArray,
+    formatOrder
+}

@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {{> includes}}
+</head>
+<body>
+    {{!-- Display the items in the list --}}
+    <table>
+        <tr>
+            <th>Product ID</th>
+            <th>Quantity</th>
+            <th>Price</th>
+            <th>total</th>
+        </tr>
+        {{#if order_items}}
+        {{#each order_items}}
+            <tr>
+                <td>{{this.productId}}</td>
+                <td>{{this.quantity}}</td>
+                <td>{{this.price}}</td>
+                <td>{{this.totalPrice}}</td> 
+            </tr>
+        {{/each}}
+        {{/if}}
+    </table>
+    <center><strong>Grand Total: ${{totalCost}}</strong></center>
+    <form action="/api/charge/{{user_id}}/{{totalCost}}" method="post">      
+        <script src="//checkout.stripe.com/v2/checkout.js" class="stripe-button" data-key={{keyPublishable}} data-locale="auto" data-description={{data_description}} data-amount="{{totalCostCents}}"></script>
+    </form>
+
+    {{> footer}}
+</body>
+</html>
+
+
+{{!-- 
+    html
+  body
+    form(action="/charge", method="post")
+      article
+        label Amount: $5.00
+      script(
+        src="//checkout.stripe.com/v2/checkout.js",
+        class="stripe-button",
+        data-key=keyPublishable,
+        data-locale="auto",
+        data-description="Sample Charge",
+        data-amount="500")
+ --}}
