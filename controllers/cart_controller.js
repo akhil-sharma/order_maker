@@ -1,3 +1,4 @@
+const Promise      = require('bluebird');
 const cart         = require('../models/cart');
 const products     = require('../models/products');
 
@@ -9,7 +10,8 @@ var addItemToCart = async (req, res) => {
         var quantity   = req.body.quantity;
     
         let item_price = await products.getItemPrice(product_id);
-        let result     = await cart.addItemToCart(user_id, product_id, item_price, quantity); //result === "success"
+        let result     = await cart.addItemToCart(user_id, product_id, item_price, quantity);
+        
         res.send({
             success: "true",
             message: `${product_id} was successfully added to cart.`
