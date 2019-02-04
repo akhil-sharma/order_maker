@@ -9,16 +9,15 @@ router.get('/productlist', productController.getProductList);
 
 //Add items to a users cart
 router.post('/cart/:userId', cartController.addItemToCart);
-
 //View the items in cart
 router.get('/cart/:userId', cartController.getUserCart);
 
-
 //stripe payment
 router.get('/cart/checkout/:userId', paymentController.handleCheckout);
-
+//checkout using new source
 router.post('/charge/:userId/:amount', paymentController.handleNewCharge);
-
+//checkout using existing
 router.post('/charge/existing/:userId/:amount', paymentController.handleExistingCharge);
+
 
 module.exports = router;

@@ -1,10 +1,6 @@
-const cart     = require('../models/cart');
-const products  = require('../models/products');
+const cart         = require('../models/cart');
+const products     = require('../models/products');
 
-//Wrapper for handling errors in the async chain
-const asyncRoute = route => (req, res, next = console.error) => {
-    Promise.resolve(route(req, res)).catch(next)
-}
 
 var addItemToCart = async (req, res) => {
     try{
@@ -19,7 +15,7 @@ var addItemToCart = async (req, res) => {
             message: `${product_id} was successfully added to cart.`
         })
     }catch(error){
-        console.log("Error:", error);
+        console.log("Error--addItemToCart:", error);
         res.status(500).send({
             success: "false",
             message: "Error"
@@ -29,22 +25,19 @@ var addItemToCart = async (req, res) => {
 
 var getUserCart = async (req, res) => {
     try{
-        let user_id = req.params.userId;
+        let user_id        = req.params.userId;
         let cart_structure = await cart.getUserCart(user_id);
-        res.send(cart_structure); 
+        res.send(cart_structure);        
     }catch(error){
-        console.log("Error:", error)
+        console.log("Error--getUserCart:", error)
         res.status(500).send({
             success: false,
         })
-    }
-    
-   
+    }   
 }
 
 
-
 module.exports = {
-    addItemToCart: asyncRoute(addItemToCart),
-    getUserCart  : asyncRoute(getUserCart)
+    addItemToCart,
+    getUserCart
 };

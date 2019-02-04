@@ -1,7 +1,7 @@
 const Promise = require('bluebird')
 
-const db = require('./dbconnection').db
-const util = require('../utils/utils')
+const db      = require('./dbconnection').db
+const util    = require('../utils/utils')
 
 var getUserCart = (user_id) => {
     return new Promise((resolve, reject) => {
@@ -10,36 +10,36 @@ var getUserCart = (user_id) => {
 
         db.getConnection((err, connection) => {
             if (err){
-                return reject("Error:", err);
+                return reject("Error--cart:", err);
             }
 
             connection.beginTransaction((err) => {
                 if(err){
-                   return reject("Error:", err);
+                   return reject("Error--cart:", err);
                 } 
 
                 connection.query(cartValueSQL, user_id, (error, results, fields) =>{
                     if (error){
-                            return reject("Error:", err);
+                            return reject("Error--cart:", err);
                     }
                     if (util.isEmptyArray(results)){
-                            return reject("Error: cart does not exist");
+                            return reject("Error--cart: cart does not exist");
                     }
                     var cart_value = results[0].value;
                     var cartId     = results[0].cartId;
                     
                     connection.query(cartItemsSQL, cartId, (error, results, fields) => {
                         if(error){
-                                return reject("Error:", err);
+                                return reject("Error--cart:", err);
                         }
                         if(util.isEmptyArray(results)){
-                                return reject("Error: No items found");
+                                return reject("Error--cart: no items found");
                         }
 
                         var cart_structure = util.formatOrder(results, cart_value, cartId);
                         connection.commit((err) => {
                             if(err){
-                                    return reject("Error: could not commit changes")
+                                    return reject("Error--cart: could not commit changes")
                             }
                             resolve(cart_structure);
                         })
@@ -57,30 +57,29 @@ var addItemToCart = (user_id, product_id, price, quantity) => {
 
         db.getConnection((err, connection) => {
             if (err){
-                return reject("Error:", err);
+                return reject("Error--cart:", err);
             }
-
             connection.beginTransaction((err) => {
                 if(err){
-                   return reject("Error:", err);
+                   return reject("Error--cart:", err);
                 } 
 
                 connection.query(pendingCartSQL, (error, results, fields) =>{//add cart
                     if (error){
                         return connection.rollback(() => {
-                            return reject("Error:", error);
+                            return reject("Error--cart:", error);
                         })
                     }
                     connection.query(cartIdSQL, (error, results, fields) => {//cart id
                         if(error){
                             return connection.rollback(() => {
-                                return reject("Error:", error);
+                                return reject("Error--cart:", error);
                             })
                         }
 
                         if(util.isEmptyArray(results)){
                             return connection.rollback(() => {
-                                return reject("Error: user not found");
+                                return reject("Error--cart: user not found");
                             });
                         }
 
@@ -89,7 +88,7 @@ var addItemToCart = (user_id, product_id, price, quantity) => {
                         connection.query(addToCartSQL, (error, results, fields) => { //add to cart
                             if(error){
                                 return connection.rollback(() => {
-                                   return reject("Error:", error);
+                                   return reject("Error--cart:", error);
                                 });
                             }
 
@@ -97,13 +96,13 @@ var addItemToCart = (user_id, product_id, price, quantity) => {
                             connection.query(updateCartValueSQL, (error, results, fields) => { //update the total cart value
                                 if(error){
                                     return connection.rollback(() => {
-                                       return reject("Error:", error);
+                                       return reject("Error--cart:", error);
                                     });
                                 }
                                 connection.commit((err) => {
                                     if(err){
                                         return connection.rollback(() => {
-                                            return reject("Error: could not commit changes");
+                                            return reject("Error--cart: could not commit changes");
                                         })
                                     }
                                     return resolve("success");
@@ -124,7 +123,7 @@ var updateCartStatus = (cartId) => {
         db.query(sql, (error, results, fields) => {
             if(error){
                 console.log(error);
-                reject("Error: ", error);
+                reject("Error--cart: ", error);
             }
             resolve("success");
         })

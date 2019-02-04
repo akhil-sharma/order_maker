@@ -31,7 +31,6 @@ function formatOrder(cart_rows, value, cartId=null){
     }
 }
 
-//console.log("value:", isEmptyArray([1]));
 
 module.exports = {
     isEmptyObject,
