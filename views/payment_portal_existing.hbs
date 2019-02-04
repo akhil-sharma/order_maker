@@ -56,6 +56,10 @@
     <br/>
     <br/>
     <center>
+        <form action="/api/charge/existing/{{user_id}}/{{totalCost}}" method="POST">
+            <input type="submit" value="Pay using card ending with {{card_number}}" class="stripe-button"/>
+        </form>
+        <br>
         <br>
         <form action="/api/charge/{{user_id}}/{{totalCost}}" method="post">      
             <script src="//checkout.stripe.com/v2/checkout.js" class="stripe-button" data-key={{keyPublishable}} data-locale="auto" data-description={{data_description}} data-amount="{{totalCostCents}}"></script>

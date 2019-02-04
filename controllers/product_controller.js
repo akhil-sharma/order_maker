@@ -7,9 +7,21 @@ const asyncRoute = route => (req, res, next = console.error) => {
 }
 
 var getProductList = async (req, res) => {
-    var list = await products.productList();
-    res.send(list);
+    try{
+        var list = await products.productList();
+        res.send(list);
+    }catch(error){
+        console.log("Error:", error);
+        res.send({
+            success: "false",
+            message: "Error"
+        })
+    }
 }
+
+// var getItemPrice = async (product_id) => {
+//     return  products.getItemPrice(product_id);
+// }
 
 module.exports = {
     getProductList: asyncRoute(getProductList),

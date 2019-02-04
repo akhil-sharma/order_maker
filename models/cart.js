@@ -1,94 +1,139 @@
+const Promise = require('bluebird')
+
 const db = require('./dbconnection').db
 const util = require('../utils/utils')
 
-//add pending cart and retrieve the cart id.
-var addPendingCart = (user_id) => {
-    let pendingCartSQL = `INSERT INTO \`cart\` (userId) SELECT * FROM (SELECT ${user_id}) AS tmp WHERE NOT EXISTS (SELECT userId FROM \`cart\` WHERE userId = ${user_id} AND checkedOut = 'pending') LIMIT 1;`;
-
-    let cartIdSQL = `SELECT cartId from \`cart\` where userId = ${user_id} and checkedOut = 'pending';`;
-
+var getUserCart = (user_id) => {
     return new Promise((resolve, reject) => {
-        db.getConnection().then((connection) => {
-            connection.query(pendingCartSQL)
-            .then(response=> {
-                return connection.query(cartIdSQL)
-            }).then(response => {
-                let cartId = response[0].cartId;
-                resolve(cartId)
-            }).catch(err => {
+        let cartValueSQL = `SELECT cartId, value FROM \`cart\` WHERE userId = ? AND checkedOut = 'pending'`;
+        let cartItemsSQL =  `SELECT productId, quantity, price, totalPrice FROM \`cart_item\` WHERE cartId = ?`;
+
+        db.getConnection((err, connection) => {
+            if (err){
+                return reject("Error:", err);
+            }
+
+            connection.beginTransaction((err) => {
                 if(err){
-                    reject("Error:", err);
-                }
+                   return reject("Error:", err);
+                } 
+
+                connection.query(cartValueSQL, user_id, (error, results, fields) =>{
+                    if (error){
+                            return reject("Error:", err);
+                    }
+                    if (util.isEmptyArray(results)){
+                            return reject("Error: cart does not exist");
+                    }
+                    var cart_value = results[0].value;
+                    var cartId     = results[0].cartId;
+                    
+                    connection.query(cartItemsSQL, cartId, (error, results, fields) => {
+                        if(error){
+                                return reject("Error:", err);
+                        }
+                        if(util.isEmptyArray(results)){
+                                return reject("Error: No items found");
+                        }
+
+                        var cart_structure = util.formatOrder(results, cart_value, cartId);
+                        connection.commit((err) => {
+                            if(err){
+                                    return reject("Error: could not commit changes")
+                            }
+                            resolve(cart_structure);
+                        })
+                    })
+                })
             })
-        }).catch(function(err) {
-            reject("Error:", err);
-        });    
+        })
     })
 }
 
-//add item and update cart value
-var addItemToCart = (cart_id, product_id, quantity, price) => {
-    let addToCartSQL = `INSERT INTO \`cart_item\` (cartId, productId, quantity, price, totalPrice) VALUES (${cart_id}, ${product_id}, ${quantity}, ${price}, ${quantity * price});`;
-
-    let updateCartValueSQL = `UPDATE \`cart\` SET value = value + ${price * quantity} WHERE cartId = ${cart_id}`;
-
+var addItemToCart = (user_id, product_id, price, quantity) => {
     return new Promise((resolve, reject) => {
-        db.getConnection().then((connection) => {
-            connection.query(addToCartSQL)
-            .then(response => {
-                return connection.query(updateCartValueSQL)
-            })
-            .then(response => {
-                resolve("success")
-            })
-            .catch(err => {
-                if (err){
-                    reject("Error:", err)
-                }
-            })
-        }).catch(err => {
-            if(err){
-                reject("Error:", err)
+        let pendingCartSQL = `INSERT INTO \`cart\` (userId) SELECT * FROM (SELECT ${user_id}) AS tmp WHERE NOT EXISTS (SELECT userId FROM \`cart\` WHERE userId = ${user_id} AND checkedOut = 'pending') AND EXISTS (SELECT * FROM \`user_info\` WHERE id = ${user_id}) LIMIT 1`; //IF the user exists
+        let cartIdSQL = `SELECT cartId from \`cart\` where userId = ${user_id} and checkedOut = 'pending'`;
+
+        db.getConnection((err, connection) => {
+            if (err){
+                return reject("Error:", err);
             }
+
+            connection.beginTransaction((err) => {
+                if(err){
+                   return reject("Error:", err);
+                } 
+
+                connection.query(pendingCartSQL, (error, results, fields) =>{//add cart
+                    if (error){
+                        return connection.rollback(() => {
+                            return reject("Error:", error);
+                        })
+                    }
+                    connection.query(cartIdSQL, (error, results, fields) => {//cart id
+                        if(error){
+                            return connection.rollback(() => {
+                                return reject("Error:", error);
+                            })
+                        }
+
+                        if(util.isEmptyArray(results)){
+                            return connection.rollback(() => {
+                                return reject("Error: user not found");
+                            });
+                        }
+
+                        var cart_id = results[0].cartId;
+                        let addToCartSQL = `INSERT INTO \`cart_item\` (cartId, productId, quantity, price, totalPrice) VALUES (${cart_id}, ${product_id}, ${quantity}, ${price}, ${quantity * price} );`;
+                        connection.query(addToCartSQL, (error, results, fields) => { //add to cart
+                            if(error){
+                                return connection.rollback(() => {
+                                   return reject("Error:", error);
+                                });
+                            }
+
+                            let updateCartValueSQL = `UPDATE \`cart\` SET value = value + ${price * quantity} WHERE cartId = ${cart_id}`;
+                            connection.query(updateCartValueSQL, (error, results, fields) => { //update the total cart value
+                                if(error){
+                                    return connection.rollback(() => {
+                                       return reject("Error:", error);
+                                    });
+                                }
+                                connection.commit((err) => {
+                                    if(err){
+                                        return connection.rollback(() => {
+                                            return reject("Error: could not commit changes");
+                                        })
+                                    }
+                                    return resolve("success");
+                                })
+                            })
+                        })
+                    })
+                })
+            })
         })
-    });
+    })
+
 }
 
-//return the contents of the cart
-var getUserCart = (user_id) => {
-    let cartItemsSQL = `SELECT productId, quantity, price, totalPrice FROM \`cart_item\` WHERE cartId IN (SELECT cartId FROM \`cart\` WHERE userId = ${user_id});`;
-
-    let cartValueSQL = `SELECT value FROM \`cart\` WHERE userId = ${user_id};`;
-
+var updateCartStatus = (cartId) => {
     return new Promise((resolve, reject) => {
-        var items;
-        db.getConnection().then((connection) => {
-            connection.query(cartItemsSQL)
-            .then(response => {
-                items = response;
-                return connection.query(cartValueSQL)
-            }).then(response => {
-                let cart_value = response[0].value;
-                let cart_structure = util.formatOrder(items, cart_value)
-                resolve(cart_structure);
-            })
-            .catch(err => {
-                if (err){
-                    reject("Error:", err)
-                }
-            })
-        }).catch(err => {
-            if(err){
-                reject("Error:", err)
+        let sql = `UPDATE cart SET checkedOut="complete" WHERE cartId = ${cartId}`;
+        db.query(sql, (error, results, fields) => {
+            if(error){
+                console.log(error);
+                reject("Error: ", error);
             }
+            resolve("success");
         })
-    });
+    })
 }
-
 
 
 module.exports = {
-    addPendingCart,
     addItemToCart,
-    getUserCart
+    getUserCart,
+    updateCartStatus
 }

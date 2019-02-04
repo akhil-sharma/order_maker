@@ -14,11 +14,14 @@ function isEmptyArray(arr){
     }
 }
 
-function formatOrder(cart_rows, value){
+function formatOrder(cart_rows, value, cartId=null){
     var orderObject = {};
     if(! isEmptyArray(cart_rows)){
         orderObject.product_rows = cart_rows;
-        orderObject.grandTotal = value;
+        orderObject.grandTotal   = value;
+        if(cartId != null){
+            orderObject.cartId   = cartId;
+        }
         return orderObject;
     }else{
         return {
@@ -27,6 +30,8 @@ function formatOrder(cart_rows, value){
             }
     }
 }
+
+//console.log("value:", isEmptyArray([1]));
 
 module.exports = {
     isEmptyObject,
