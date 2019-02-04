@@ -35,7 +35,7 @@ var handleCheckout = async (req, res) => {
                 totalCost        : userCart.grandTotal,
                 totalCostCents   : userCart.grandTotal * 100,
                 data_description : `Order Checkout for ${user_id}`,
-                card_number      : (await cardLast4) !== "empty" ? (await cardLast4) : "",
+                card_number      : (await cardLast4) !== "empty" ? (await cardLast4) : ""
             });
         }
     }catch(error){
