@@ -10,41 +10,43 @@ var getUserCart = (user_id) => {
 
         db.getConnection((err, connection) => {
             if (err){
-                return reject("Error--cart:", err);
+                return reject("Error--cart-1:", err);
             }
 
-            connection.beginTransaction((err) => {
-                if(err){
-                   return reject("Error--cart:", err);
-                } 
+            connection.query(cartValueSQL, (error, results, fields) => {
+                if(error){
+                    reject("Error--cart-5: cart doesn't exist.",error);
+                    connection.release();
+                    return;
+                }
 
-                connection.query(cartValueSQL, user_id, (error, results, fields) =>{
-                    if (error){
-                            return reject("Error--cart:", err);
+                if(util.isEmptyArray(results)){
+                    reject("Error--cart-4: cart does not exist");
+                    connection.release();
+                    return;
+                }
+                console.log(results);
+                var cart_value = results[0].value;
+                var cartId     = results[0].cartId;
+
+                connection.query(cartItemsSQL, cartId,(error, results, fields) => {
+                    if(error){
+                        reject("Error--cart-3:", error);
+                        connection.release();
+                        return;
                     }
-                    if (util.isEmptyArray(results)){
-                            return reject("Error--cart: cart does not exist");
-                    }
-                    var cart_value = results[0].value;
-                    var cartId     = results[0].cartId;
                     
-                    connection.query(cartItemsSQL, cartId, (error, results, fields) => {
-                        if(error){
-                                return reject("Error--cart:", err);
-                        }
-                        if(util.isEmptyArray(results)){
-                                return reject("Error--cart: no items found");
-                        }
+                    if(util.isEmptyArray(results)){
+                            reject("Error--cart-2: no items found");
+                            connection.release();
+                            return;
+                    }
 
-                        var cart_structure = util.formatOrder(results, cart_value, cartId);
-                        connection.commit((err) => {
-                            if(err){
-                                    return reject("Error--cart: could not commit changes")
-                            }
-                            resolve(cart_structure);
-                        })
-                    })
+                    var cart_structure = util.formatOrder(results, cart_value, cartId);
+                    connection.release();
+                    resolve(cart_structure);
                 })
+
             })
         })
     })
@@ -61,25 +63,30 @@ var addItemToCart = (user_id, product_id, price, quantity) => {
             }
             connection.beginTransaction((err) => {
                 if(err){
-                   return reject("Error--cart:", err);
+                   reject("Error--cart:", err);
+                   connection.release();
+                   return;
                 } 
 
                 connection.query(pendingCartSQL, (error, results, fields) =>{//add cart
                     if (error){
                         return connection.rollback(() => {
-                            return reject("Error--cart:", error);
+                            reject("Error--cart:", error);
+                            connection.release();
                         })
                     }
                     connection.query(cartIdSQL, (error, results, fields) => {//cart id
                         if(error){
                             return connection.rollback(() => {
-                                return reject("Error--cart:", error);
+                                reject("Error--cart:", error);
+                                connection.release();
                             })
                         }
 
                         if(util.isEmptyArray(results)){
                             return connection.rollback(() => {
-                                return reject("Error--cart: user not found");
+                                reject("Error--cart: user not found");
+                                connection.release();
                             });
                         }
 
@@ -88,7 +95,8 @@ var addItemToCart = (user_id, product_id, price, quantity) => {
                         connection.query(addToCartSQL, (error, results, fields) => { //add to cart
                             if(error){
                                 return connection.rollback(() => {
-                                   return reject("Error--cart:", error);
+                                   reject("Error--cart:", error);
+                                   connection.release();
                                 });
                             }
 
@@ -96,16 +104,20 @@ var addItemToCart = (user_id, product_id, price, quantity) => {
                             connection.query(updateCartValueSQL, (error, results, fields) => { //update the total cart value
                                 if(error){
                                     return connection.rollback(() => {
-                                       return reject("Error--cart:", error);
+                                       reject("Error--cart:", error);
+                                       connection.release();
                                     });
                                 }
                                 connection.commit((err) => {
                                     if(err){
                                         return connection.rollback(() => {
-                                            return reject("Error--cart: could not commit changes");
+                                            reject("Error--cart: could not commit changes");
+                                            connection.release();
                                         })
                                     }
-                                    return resolve("success");
+                                    connection.release();
+                                    resolve("success");
+                                    return;
                                 })
                             })
                         })

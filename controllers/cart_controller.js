@@ -16,6 +16,7 @@ var addItemToCart = async (req, res) => {
             success: "true",
             message: `${product_id} was successfully added to cart.`
         })
+        return;
     }catch(error){
         console.log("Error--addItemToCart:", error);
         res.status(500).send({
@@ -29,7 +30,8 @@ var getUserCart = async (req, res) => {
     try{
         let user_id        = req.params.userId;
         let cart_structure = await cart.getUserCart(user_id);
-        res.send(cart_structure);        
+        res.send(cart_structure);
+        return;        
     }catch(error){
         console.log("Error--getUserCart:", error)
         res.status(500).send({

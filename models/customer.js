@@ -26,14 +26,18 @@ var retrieveCustomerId = (user_id) => {
             let customerIdSQL = `SELECT stripeId FROM stripe_user WHERE userId = ${user_id}`
             connection.query(customerIdSQL, (error, results, fields) => {
                 if (error){
+                    connection.release();
                     console.log("Error--customer:", error);
                     return reject("Error:", error);
                 }
-
                 if(util.isEmptyArray(results)){
+                    connection.release();
                     resolve("empty");
+                    return;
                 }else{
+                    connection.release();
                     resolve(results[0].stripeId);
+                    return;
                 }
 
             })
@@ -47,7 +51,7 @@ var saveCard = (charge) => {
         db.query(sql, (error, results, fields) =>{
             if(error){
                 console.log("Error--customer:", error);
-                reject("error");
+                return reject("error");
             }
             resolve("success");
         })

@@ -8,8 +8,7 @@ const cart           = require('../models/cart');
 const customer       = require('../models/customer');
 
 
-var handleCheckout = async (req, res) => {
-    console.log("Entered handler.");
+var _handleCheckout = async (req, res) => {
     try{
         var user_id    = req.params.userId;
         var customerId = customer.retrieveCustomerId(user_id);
@@ -38,6 +37,33 @@ var handleCheckout = async (req, res) => {
                 card_number      : (await cardLast4) !== "empty" ? (await cardLast4) : ""
             });
         }
+    }catch(error){
+        console.log("Error--handleCheckout:", error)
+        res.status(500).send({
+            success: "false",
+            message: "invalid request"
+        })
+    }
+}
+
+var handleCheckout = async (req, res) => {
+    try{
+        var user_id    = req.params.userId;
+        var customerId = customer.retrieveCustomerId(user_id);
+        var userCart   = cart.getUserCart(user_id);
+        var cardLast4  = customer.retrieveCard(await customerId);
+
+        res.render('test_payment_portal.hbs', {
+            keyPublishable,
+            user_id,
+            order_items      : (await userCart).product_rows,
+            totalCost        : (await userCart).grandTotal,
+            totalCostCents   : (await userCart).grandTotal * 100,
+            data_description : `Order Checkout for ${user_id}`,
+            returning        : (await customerId) === "empty" ? false : true,
+            card_number      : (await cardLast4)  === "empty" ? ""    : (await cardLast4)
+        })
+        return;
     }catch(error){
         console.log("Error--handleCheckout:", error)
         res.status(500).send({
@@ -79,6 +105,7 @@ var handleNewCharge = async (req, res) => {
                 message: "Payment successful",
                 receipt: charge.receipt_url
             })
+            return;
         }      
     }catch(error){
         if(error){
@@ -114,10 +141,41 @@ var handleExistingCharge = async (req, res) => {
                 message: "Payment successful",
                 receipt: charge.receipt_url
             })
+            return;
+        }else{
+            console.log(charge);//unwitnessed as of now
         }
     }catch(error){
         if(error){
             console.log("Error-handleExistingCharge:", error);
+            if(error.type){
+                switch (error.type) {
+                    case 'StripeCardError':
+                      // A declined card error
+                      console.log(error.message); // => e.g. "Your card's expiration year is invalid."
+                      break;
+                    case 'StripeInvalidRequestError':
+                      // Invalid parameters were supplied to Stripe's API
+                      console.log(error.message);
+                      break;
+                    case 'StripeAPIError':
+                      // An error occurred internally with Stripe's API
+                      console.log(error.message);
+                      break;
+                    case 'StripeConnectionError':
+                      // Some kind of error occurred during the HTTPS communication
+                      console.log(error.message);
+                      break;
+                    case 'StripeAuthenticationError':
+                      // You probably used an incorrect API key
+                      console.log(error.message);
+                      break;
+                    case 'StripeRateLimitError':
+                      // Too many requests hit the API too quickly
+                      console.log(error.message);
+                      break;
+                  }
+            }
             res.send({
                 success: "false",
                 message: "payment failed"
