@@ -1,7 +1,7 @@
 //stripe
-const api_keys       = require('../api_keys') 
-const keyPublishable = api_keys.keyPublishable;
-const keySecret      = api_keys.keySecret;
+const api_keys       = require('../api_keys') || 0;
+const keyPublishable = api_keys.keyPublishable || process.env.keyPublishable;
+const keySecret      = api_keys.keySecret || process.env.keySecret;
 const stripe         = require("stripe")(keySecret);
 
 const Promise        = require('bluebird');
