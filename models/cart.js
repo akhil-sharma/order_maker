@@ -13,9 +13,10 @@ var getUserCart = (user_id) => {
                 return reject("Error--cart-1:", err);
             }
 
-            connection.query(cartValueSQL, (error, results, fields) => {
+            connection.query(cartValueSQL, user_id,(error, results, fields) => {
                 if(error){
-                    reject("Error--cart-5: cart doesn't exist.",error);
+                    reject("Error--cart-5: cart doesn't exist.");
+                    console.log(error)
                     connection.release();
                     return;
                 }
@@ -25,7 +26,7 @@ var getUserCart = (user_id) => {
                     connection.release();
                     return;
                 }
-                console.log(results);
+                //console.log(results);
                 var cart_value = results[0].value;
                 var cartId     = results[0].cartId;
 
@@ -54,8 +55,8 @@ var getUserCart = (user_id) => {
 
 var addItemToCart = (user_id, product_id, price, quantity) => {
     return new Promise((resolve, reject) => {
-        let pendingCartSQL = `INSERT INTO \`cart\` (userId) SELECT * FROM (SELECT ${user_id}) AS tmp WHERE NOT EXISTS (SELECT userId FROM \`cart\` WHERE userId = ${user_id} AND checkedOut = 'pending') AND EXISTS (SELECT * FROM \`user_info\` WHERE id = ${user_id}) LIMIT 1`; //IF the user exists
-        let cartIdSQL = `SELECT cartId from \`cart\` where userId = ${user_id} and checkedOut = 'pending'`;
+        let pendingCartSQL = `INSERT INTO \`cart\` (userId) SELECT * FROM (SELECT ? ) AS tmp WHERE NOT EXISTS (SELECT userId FROM \`cart\` WHERE userId = ? AND checkedOut = 'pending') AND EXISTS (SELECT * FROM \`user_info\` WHERE id = ?) LIMIT 1`; //IF the user exists
+        let cartIdSQL = `SELECT cartId from \`cart\` where userId = ? and checkedOut = 'pending'`;
 
         db.getConnection((err, connection) => {
             if (err){
@@ -63,21 +64,21 @@ var addItemToCart = (user_id, product_id, price, quantity) => {
             }
             connection.beginTransaction((err) => {
                 if(err){
-                   reject("Error--cart:", err);
                    connection.release();
                    return;
                 } 
-
-                connection.query(pendingCartSQL, (error, results, fields) =>{//add cart
+                connection.query(pendingCartSQL, [user_id, user_id, user_id],(error, results, fields) =>{//add cart
                     if (error){
                         return connection.rollback(() => {
+                            console.log(error);
                             reject("Error--cart:", error);
                             connection.release();
                         })
                     }
-                    connection.query(cartIdSQL, (error, results, fields) => {//cart id
+                    connection.query(cartIdSQL, user_id,(error, results, fields) => {//cart id
                         if(error){
                             return connection.rollback(() => {
+                                console.log(error);
                                 reject("Error--cart:", error);
                                 connection.release();
                             })
@@ -91,18 +92,20 @@ var addItemToCart = (user_id, product_id, price, quantity) => {
                         }
 
                         var cart_id = results[0].cartId;
-                        let addToCartSQL = `INSERT INTO \`cart_item\` (cartId, productId, quantity, price, totalPrice) VALUES (${cart_id}, ${product_id}, ${quantity}, ${price}, ${quantity * price} );`;
-                        connection.query(addToCartSQL, (error, results, fields) => { //add to cart
+                        let addToCartSQL = "INSERT INTO `cart_item` (cartId, productId, quantity, price, totalPrice) VALUES ( ? ,? ,? ,? ,?)";
+                        connection.query(addToCartSQL, [cart_id, product_id, quantity, price, quantity*price],(error, results, fields) => { //add to cart
                             if(error){
+                                console.log(error);
                                 return connection.rollback(() => {
                                    reject("Error--cart:", error);
                                    connection.release();
                                 });
                             }
 
-                            let updateCartValueSQL = `UPDATE \`cart\` SET value = value + ${price * quantity} WHERE cartId = ${cart_id}`;
-                            connection.query(updateCartValueSQL, (error, results, fields) => { //update the total cart value
+                            let updateCartValueSQL = `UPDATE \`cart\` SET value = \`value\` + ? WHERE cartId = ?`;
+                            connection.query(updateCartValueSQL, [price * quantity, cart_id], (error, results, fields) => { //update the total cart value
                                 if(error){
+                                    console.log(error);
                                     return connection.rollback(() => {
                                        reject("Error--cart:", error);
                                        connection.release();

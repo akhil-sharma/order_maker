@@ -6,3 +6,4 @@ var pool = mysql.createPool(config.mysql_config);
 module.exports = {
     db: pool
 }
+
